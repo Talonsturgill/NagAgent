@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uvicorn
+import logging
+import os
 
 from app.database import engine, Base
 from app.config import settings, validate_settings
@@ -12,37 +14,73 @@ from app.middleware.rate_limiter import limiter, custom_rate_limit_exceeded_hand
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+# Configure logging based on environment
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, log_level, logging.INFO),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+logger.info("🔥 Initializing NagAgent API application...")
+logger.info(f"🌍 Environment: {settings.environment}")
+logger.info(f"🔌 Port: {os.getenv('PORT', '8000')}")
+logger.info(f"📊 Log level: {log_level}")
+
 # Validate configuration on startup
-validate_settings()
+try:
+    validate_settings()
+    logger.info("✅ Configuration validation completed")
+except Exception as e:
+    logger.error(f"❌ Configuration validation failed: {e}")
+    raise
 
 # Create database tables (gracefully handle missing database)
 try:
     if engine is not None:
+        logger.info("🗄️ Creating/verifying database tables...")
         Base.metadata.create_all(bind=engine)
-        print("✅ Database tables created/verified successfully")
+        logger.info("✅ Database tables created/verified successfully")
     else:
-        print("⚠️ Database engine not available - skipping table creation")
-        print("📝 Application will continue without database - some features may be limited")
+        logger.warning("⚠️ Database engine not available - skipping table creation")
+        logger.info("📝 Application will continue without database - some features may be limited")
 except Exception as e:
-    print(f"⚠️ Database not available during startup: {e}")
-    print("📝 Application will continue without database - some features may be limited")
+    logger.warning(f"⚠️ Database not available during startup: {e}")
+    logger.info("📝 Application will continue without database - some features may be limited")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print(f"🔥 Starting {settings.app_name} API v{settings.app_version}...")
-    print(f"🌍 Environment: {settings.environment}")
+    logger.info(f"🚀 Starting {settings.app_name} API v{settings.app_version}...")
+    logger.info(f"🌍 Environment: {settings.environment}")
     
     if settings.rate_limit_enabled:
-        print("🚦 Rate limiting enabled")
+        logger.info("🚦 Rate limiting enabled")
+    else:
+        logger.info("🚦 Rate limiting disabled")
     
-    start_scheduler()
-    print("📅 Scheduler started")
+    try:
+        start_scheduler()
+        logger.info("📅 Scheduler started successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to start scheduler: {e}")
+        logger.info("📝 Application will continue without scheduler")
+    
+    logger.info("✨ Application startup completed successfully")
+    logger.info(f"📡 Health check available at /health")
+    logger.info(f"📚 API documentation available at {settings.docs_url}")
+    
     yield
+    
     # Shutdown
-    print("🛑 Shutting down NagAgent API...")
-    stop_scheduler()
-    print("📅 Scheduler stopped")
+    logger.info("🛑 Shutting down NagAgent API...")
+    try:
+        stop_scheduler()
+        logger.info("📅 Scheduler stopped successfully")
+    except Exception as e:
+        logger.warning(f"⚠️ Error stopping scheduler: {e}")
+    
+    logger.info("👋 Application shutdown completed")
 
 app = FastAPI(
     title=settings.app_name,
@@ -123,43 +161,110 @@ async def root():
     }
 
 @app.get("/health", tags=["health"])
-@limiter.limit("60/minute")
 async def health_check():
-    """Health check endpoint"""
-    db_status = "not_configured"
+    """
+    Fast health check endpoint optimized for Railway deployment
+    Returns immediately without blocking on database connections
+    """
+    import os
+    from datetime import datetime
     
-    # Only test database connection if DATABASE_URL is configured and database is available
+    # Fast response - don't block on database connections for health checks
+    health_response = {
+        "status": "healthy",
+        "message": "Ready to disappoint users with their lack of progress",
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "environment": settings.environment,
+        "port": os.getenv("PORT", "8000"),
+        "host": "0.0.0.0",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    # Quick database status check (non-blocking)
     try:
-        from app.config import settings
+        from app.database import database_available, engine
+        
+        if database_available and engine is not None:
+            health_response["database"] = "configured"
+        else:
+            health_response["database"] = "not_available"
+            
+    except Exception as e:
+        health_response["database"] = f"error: {str(e)[:50]}"
+    
+    return health_response
+
+@app.get("/health/detailed", tags=["health"])
+@limiter.limit("10/minute")
+async def detailed_health_check():
+    """
+    Detailed health check that actually tests database connections
+    Use this for monitoring, not for Railway health checks
+    """
+    import os
+    from datetime import datetime
+    
+    health_response = {
+        "status": "healthy",
+        "message": "Detailed system health check",
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "environment": settings.environment,
+        "timestamp": datetime.utcnow().isoformat(),
+        "checks": {}
+    }
+    
+    # Database connection test (this can be slow)
+    try:
         from app.database import database_available, SessionLocal
-        import os
         
         database_url = os.getenv("DATABASE_URL", settings.database_url)
         
-        # Check if we have database configured and available
         if database_available and database_url and "postgresql://" in database_url:
-            # Try to actually connect and test
             if SessionLocal is not None:
+                start_time = datetime.utcnow()
                 db = SessionLocal()
                 db.execute("SELECT 1")
                 db.close()
-                db_status = "healthy"
+                end_time = datetime.utcnow()
+                
+                health_response["checks"]["database"] = {
+                    "status": "healthy",
+                    "response_time_ms": int((end_time - start_time).total_seconds() * 1000),
+                    "url_configured": True
+                }
             else:
-                db_status = "not_available"
+                health_response["checks"]["database"] = {
+                    "status": "not_available",
+                    "error": "SessionLocal is None"
+                }
         else:
-            db_status = "not_configured"
+            health_response["checks"]["database"] = {
+                "status": "not_configured",
+                "url_configured": bool(database_url and "postgresql://" in database_url)
+            }
+            
     except Exception as e:
-        db_status = f"error: {str(e)[:100]}"  # Truncate long error messages
+        health_response["checks"]["database"] = {
+            "status": "error",
+            "error": str(e)[:200]
+        }
     
-    return {
-        "status": "healthy",  # Always healthy if the app is responding
-        "message": "Ready to disappoint users with their lack of progress",
-        "database": db_status,
-        "environment": settings.environment,
-        "version": settings.app_version,
-        "port": os.getenv("PORT", "8000"),
-        "timestamp": __import__('datetime').datetime.utcnow().isoformat()
-    }
+    # OpenAI API check
+    try:
+        openai_configured = bool(os.getenv("OPENAI_API_KEY"))
+        health_response["checks"]["openai"] = {
+            "status": "configured" if openai_configured else "not_configured",
+            "api_key_present": openai_configured
+        }
+    except Exception as e:
+        health_response["checks"]["openai"] = {
+            "status": "error",
+            "error": str(e)[:100]
+        }
+    
+    return health_response
 
 @app.get(f"{settings.api_prefix}/personalities", tags=["roasts"])
 @limiter.limit("100/minute")
