@@ -1,1 +1,1 @@
-web: cd NagAgent-Backend-Python && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+web: cd NagAgent-Backend-Python && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT

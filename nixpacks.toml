@@ -1,8 +1,12 @@
 [phases.setup]
-nixPkgs = ["python311", "gcc"]
+nixPkgs = ["python311", "gcc", "poetry"]
 
 [phases.install]
-cmds = ["cd NagAgent-Backend-Python && pip install -r requirements.txt"]
+cmds = [
+    "cd NagAgent-Backend-Python",
+    "python -m pip install --upgrade pip",
+    "pip install -r requirements.txt"
+]
 
 [start]
-cmd = "cd NagAgent-Backend-Python && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = "cd NagAgent-Backend-Python && python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
