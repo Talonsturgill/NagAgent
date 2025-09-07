@@ -1,0 +1,457 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Information -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>NagAgent</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	
+	<!-- iOS Support -->
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	
+	<!-- App Transport Security -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Allow arbitrary loads in debug builds only -->
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		
+		<!-- Exception domains for development/staging -->
+		<key>NSExceptionDomains</key>
+		<dict>
+			<!-- Local development -->
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.0</string>
+			</dict>
+			
+			<!-- Staging environment -->
+			<key>staging-api.nagagent.com</key>
+			<dict>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+			
+			<!-- Production API -->
+			<key>api.nagagent.com</key>
+			<dict>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.3</string>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			
+			<!-- RevenueCat -->
+			<key>api.revenuecat.com</key>
+			<dict>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+			</dict>
+			
+			<!-- Firebase -->
+			<key>firebaseapi.com</key>
+			<dict>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+	
+	<!-- Permissions -->
+	<!-- Push Notifications -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>background-processing</string>
+		<string>background-fetch</string>
+	</array>
+	
+	<!-- User Notifications -->
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>NagAgent needs notification permissions to send you personalized roasts, task reminders, and daily progress reports to keep you accountable to your goals.</string>
+	
+	<!-- Face ID / Touch ID -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Use Face ID to securely authenticate and protect your accountability data.</string>
+	
+	<!-- Camera (for future features like progress photos) -->
+	<key>NSCameraUsageDescription</key>
+	<string>Take photos to document your progress and achievements.</string>
+	
+	<!-- Photo Library (for sharing achievements) -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Save and share your progress reports and achievements.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save your achievement screenshots and progress reports to your photo library.</string>
+	
+	<!-- Contacts (for sharing with accountability partners) -->
+	<key>NSContactsUsageDescription</key>
+	<string>Find and invite accountability partners from your contacts.</string>
+	
+	<!-- Microphone (for voice memos/excuses) -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Record voice memos for your tasks and excuses.</string>
+	
+	<!-- Calendar (for scheduling reminders) -->
+	<key>NSCalendarsUsageDescription</key>
+	<string>Schedule task reminders and deadlines in your calendar.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>Create reminders for your goals and tasks.</string>
+	
+	<!-- Location (for context-aware features) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Location is used to provide context-aware reminders and suggestions based on where you are.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Location is used to provide context-aware reminders and suggestions based on where you are.</string>
+	
+	<!-- Health (for future health goal integration) -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>Access health data to track fitness and wellness goals.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Update health data when you complete fitness goals.</string>
+	
+	<!-- App Icons -->
+	<key>CFBundleIconFiles</key>
+	<array>
+		<string>AppIcon</string>
+	</array>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>AppIcon</string>
+			</array>
+		</dict>
+	</dict>
+	
+	<!-- URL Schemes -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<!-- Custom URL scheme for deep linking -->
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.nagagent.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>nagagent</string>
+			</array>
+		</dict>
+		
+		<!-- Universal Links -->
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.nagagent.universallinks</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>https</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- Associated Domains for Universal Links -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:nagagent.com</string>
+		<string>applinks:www.nagagent.com</string>
+	</array>
+	
+	<!-- Supported Interface Orientations -->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	
+	<!-- Scene Configuration -->
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	
+	<!-- Launch Screen -->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchScreenBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchIcon</string>
+		<key>UIImageRespectsSafeAreaInsets</key>
+		<true/>
+		<key>UILaunchScreenMimimumTime</key>
+		<real>2</real>
+	</dict>
+	
+	<!-- Status Bar -->
+	<key>UIStatusBarHidden</key>
+	<false/>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+	
+	<!-- App Store Information -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	
+	<!-- Accessibility -->
+	<key>UIAccessibilityEnabled</key>
+	<true/>
+	
+	<!-- Document Types (for export/import) -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>nagagent</string>
+			</array>
+			<key>CFBundleTypeIconFiles</key>
+			<array>
+				<string>DocumentIcon</string>
+			</array>
+			<key>CFBundleTypeName</key>
+			<string>NagAgent Data</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.nagagent.data</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- Exported UTIs -->
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.json</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>NagAgent Data File</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.nagagent.data</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>nagagent</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-nagagent-data</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	
+	<!-- Privacy Manifest -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeEmailAddress</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeName</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeDeviceID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+				<string>NSPrivacyCollectedDataTypePurposeProductPersonalization</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>35F9.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>E174.1</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- Siri Integration -->
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.nagagent.complete-task</string>
+		<string>com.nagagent.add-goal</string>
+		<string>com.nagagent.view-progress</string>
+	</array>
+	
+	<!-- Widget Configuration -->
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.widgetkit-extension</string>
+	</dict>
+	
+	<!-- App Category -->
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	
+	<!-- Minimum iOS Version -->
+	<key>MinimumOSVersion</key>
+	<string>15.0</string>
+	
+	<!-- Required Device Capabilities -->
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	
+	<!-- Supported Platforms -->
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>iPhoneOS</string>
+	</array>
+	
+	<!-- App Thinning -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>CustomFont-Regular.ttf</string>
+		<string>CustomFont-Bold.ttf</string>
+	</array>
+	
+	<!-- Shortcuts -->
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>CompleteTaskIntent</string>
+		<string>AddGoalIntent</string>
+		<string>ViewProgressIntent</string>
+	</array>
+	
+	<!-- Metal -->
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>metal</string>
+	</array>
+</dict>
+</plist>

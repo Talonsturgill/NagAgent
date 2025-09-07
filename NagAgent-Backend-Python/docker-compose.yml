@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://nagent:nagentpass@db:5432/nagentdb
+      - REDIS_URL=redis://redis:6379
+      
+      # Security
+      - SECRET_KEY=your-super-secret-key-change-in-production-please
+      - ALGORITHM=HS256
+      
+      # OpenAI API
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-api-key}
+      
+      # Environment
+      - ENVIRONMENT=development
+      - DEBUG=true
+      
+      # Rate limiting
+      - RATE_LIMIT_ENABLED=true
+      
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=nagentdb
+      - POSTGRES_USER=nagent
+      - POSTGRES_PASSWORD=nagentpass
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nagent -d nagentdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass nagentredis
+    environment:
+      - REDIS_PASSWORD=nagentredis
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "nagentredis", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Optional: Adminer for database management
+  adminer:
+    image: adminer:4
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

@@ -1,0 +1,410 @@
+# NagAgent Backend CI/CD Pipeline
+# This workflow handles testing, building, and deploying the NagAgent API
+
+name: CI/CD Pipeline
+
+# Trigger events
+on:
+  push:
+    branches: [ main, develop, staging ]
+    paths:
+      - 'app/**'
+      - 'alembic/**'
+      - 'requirements.txt'
+      - 'Dockerfile'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'app/**'
+      - 'alembic/**'
+      - 'requirements.txt'
+      - 'Dockerfile'
+
+# Environment variables
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+# Jobs
+jobs:
+  # Code Quality and Security Checks
+  quality-check:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for SonarQube
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install flake8 black isort bandit safety mypy
+    
+    - name: Run Black (code formatting check)
+      run: black --check app/ --diff
+    
+    - name: Run isort (import sorting check)
+      run: isort --check-only app/ --diff
+    
+    - name: Run Flake8 (linting)
+      run: flake8 app/ --max-line-length=88 --extend-ignore=E203,W503
+    
+    - name: Run Bandit (security analysis)
+      run: bandit -r app/ -f json -o bandit-report.json
+      continue-on-error: true
+    
+    - name: Run Safety (dependency vulnerability scan)
+      run: safety check --json --output safety-report.json
+      continue-on-error: true
+    
+    - name: Run MyPy (type checking)
+      run: mypy app/ --ignore-missing-imports
+      continue-on-error: true
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+
+  # Unit and Integration Tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: quality-check
+    
+    # Test matrix for multiple Python versions
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11']
+    
+    services:
+      # PostgreSQL for testing
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_USER: testuser
+          POSTGRES_DB: nagagent_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      # Redis for testing
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest-cov pytest-xdist pytest-mock httpx
+    
+    - name: Set up environment variables
+      run: |
+        cp .env.test.example .env.test
+        echo "DATABASE_URL=postgresql://testuser:testpassword@localhost:5432/nagagent_test" >> .env.test
+        echo "REDIS_URL=redis://localhost:6379/0" >> .env.test
+        echo "JWT_SECRET_KEY=test-secret-key-for-ci" >> .env.test
+        echo "OPENAI_API_KEY=test-key" >> .env.test
+        echo "TWILIO_ACCOUNT_SID=test-sid" >> .env.test
+        echo "TWILIO_AUTH_TOKEN=test-token" >> .env.test
+        echo "ENVIRONMENT=test" >> .env.test
+    
+    - name: Run database migrations
+      run: |
+        alembic upgrade head
+      env:
+        DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/nagagent_test
+    
+    - name: Run tests with coverage
+      run: |
+        pytest --cov=app --cov-report=xml --cov-report=html --cov-report=term-missing -v
+      env:
+        DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/nagagent_test
+    
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-py${{ matrix.python-version }}
+        path: |
+          htmlcov/
+          coverage.xml
+          pytest-report.xml
+
+  # Build Docker Image
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [quality-check, test]
+    if: github.event_name == 'push'
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+  # Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging-api.nagagent.ai
+    
+    steps:
+    - name: Deploy to Railway (Staging)
+      run: |
+        echo "Deploying to staging environment..."
+        # This would typically use Railway CLI or API
+        # railway deploy --service staging-api
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_STAGING_TOKEN }}
+
+  # Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://api.nagagent.ai
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install Railway CLI
+      run: |
+        curl -fsSL https://railway.app/install.sh | sh
+        echo "$HOME/.railway/bin" >> $GITHUB_PATH
+    
+    - name: Deploy to Railway (Production)
+      run: |
+        railway login --token ${{ secrets.RAILWAY_PRODUCTION_TOKEN }}
+        railway deploy --service production-api
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_PRODUCTION_TOKEN }}
+    
+    - name: Run post-deployment health checks
+      run: |
+        # Wait for deployment to be ready
+        sleep 30
+        
+        # Health check
+        curl -f https://api.nagagent.ai/health || exit 1
+        
+        # API endpoints check
+        curl -f https://api.nagagent.ai/api/v1/personalities || exit 1
+    
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "✅ Production deployment successful!"
+        # You could add Slack/Discord notification here
+
+  # Database Migration Job (Production)
+  migrate-production:
+    name: Run Database Migrations (Production)
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        pip install alembic psycopg2-binary python-dotenv
+    
+    - name: Run migrations
+      run: |
+        alembic upgrade head
+      env:
+        DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+
+  # Security Scan
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ needs.build.outputs.image-tag }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Performance Testing (Production)
+  performance-test:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install k6
+      run: |
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+    
+    - name: Run performance tests
+      run: |
+        k6 run tests/performance/load-test.js
+      env:
+        API_BASE_URL: https://api.nagagent.ai
+
+  # Notification Job
+  notify:
+    name: Notify Teams
+    runs-on: ubuntu-latest
+    needs: [deploy-production, migrate-production]
+    if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    
+    steps:
+    - name: Notify Slack on Success
+      if: needs.deploy-production.result == 'success'
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: "🚀 NagAgent API deployed to production successfully!"
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+    
+    - name: Notify Slack on Failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: "❌ NagAgent API deployment failed!"
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+# Cleanup old workflow runs and artifacts
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Delete old workflow runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        repository: ${{ github.repository }}
+        retain_days: 30
+        keep_minimum_runs: 10

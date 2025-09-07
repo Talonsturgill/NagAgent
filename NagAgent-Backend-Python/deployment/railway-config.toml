@@ -1,0 +1,188 @@
+# Railway.app Configuration for NagAgent Backend
+# Documentation: https://docs.railway.app/reference/config-file
+
+[build]
+# Build command to run during deployment
+builder = "nixpacks"
+buildCommand = "pip install -r requirements.txt"
+
+[deploy]
+# Start command for the application
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Health check configuration
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+
+# Environment settings
+[environments.production]
+variables = [
+  # Database
+  "DATABASE_URL",
+  "DB_POOL_SIZE=10",
+  "DB_POOL_OVERFLOW=20",
+  
+  # API Configuration
+  "API_VERSION=v1",
+  "API_PREFIX=/api/v1",
+  "APP_NAME=NagAgent API",
+  "APP_VERSION=1.0.0",
+  "ENVIRONMENT=production",
+  
+  # Security
+  "JWT_SECRET_KEY",
+  "JWT_ALGORITHM=HS256",
+  "JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30",
+  "JWT_REFRESH_TOKEN_EXPIRE_DAYS=7",
+  
+  # Rate Limiting
+  "RATE_LIMIT_ENABLED=true",
+  "RATE_LIMIT_REQUESTS_PER_MINUTE=100",
+  
+  # OpenAI
+  "OPENAI_API_KEY",
+  "OPENAI_MODEL=gpt-4o-mini",
+  "OPENAI_MAX_TOKENS=150",
+  "OPENAI_TEMPERATURE=0.8",
+  
+  # Twilio (for SMS notifications)
+  "TWILIO_ACCOUNT_SID",
+  "TWILIO_AUTH_TOKEN",
+  "TWILIO_PHONE_NUMBER",
+  
+  # CORS
+  "ALLOWED_ORIGINS=https://nagagent.ai,https://www.nagagent.ai",
+  "ALLOWED_METHODS=GET,POST,PUT,DELETE,PATCH,OPTIONS",
+  "ALLOWED_HEADERS=*",
+  
+  # Documentation
+  "DOCS_URL=/docs",
+  "REDOC_URL=/redoc",
+  
+  # Logging
+  "LOG_LEVEL=INFO",
+  
+  # Feature Flags
+  "ENABLE_WEBHOOK_LEGACY=true",
+  "ENABLE_SOCIAL_FEATURES=false",
+  "ENABLE_VOICE_MESSAGES=true",
+]
+
+[environments.staging]
+variables = [
+  # Same as production but with staging-specific values
+  "ENVIRONMENT=staging",
+  "ALLOWED_ORIGINS=https://staging.nagagent.ai",
+  "LOG_LEVEL=DEBUG",
+  "DOCS_URL=/docs",
+  "REDOC_URL=/redoc",
+]
+
+# Service configuration
+[services]
+
+[services.web]
+# Main web service
+type = "web"
+port = 8000
+
+[services.database]
+# PostgreSQL database
+type = "postgresql"
+# Railway will automatically provision and configure
+
+[services.redis]
+# Redis for caching and rate limiting
+type = "redis"
+# Railway will automatically provision
+
+# Deployment hooks
+[hooks]
+# Pre-deploy: Run database migrations
+preDeploy = """
+alembic upgrade head
+"""
+
+# Post-deploy: Warm up the application
+postDeploy = """
+curl -f $RAILWAY_STATIC_URL/health || exit 1
+"""
+
+# Networking
+[networking]
+# Custom domain configuration (set in Railway dashboard)
+# domains = ["api.nagagent.ai"]
+
+# Volume mounts (if needed for file storage)
+# [volumes]
+# [volumes.uploads]
+# mountPath = "/app/uploads"
+# size = "5GB"
+
+# Cron jobs for scheduled tasks
+[cron]
+[cron.daily_reports]
+schedule = "0 20 * * *"  # 8 PM UTC daily
+command = "python -m app.tasks.daily_reports"
+
+[cron.cleanup_old_data]
+schedule = "0 2 * * 0"   # 2 AM UTC every Sunday
+command = "python -m app.tasks.cleanup"
+
+# Resource limits
+[resources]
+# Production limits
+memory = "512Mi"
+cpu = "500m"
+disk = "1Gi"
+
+# Auto-scaling (Railway Pro plan)
+[scaling]
+minInstances = 1
+maxInstances = 3
+targetCPU = 70
+targetMemory = 80
+
+# Monitoring and alerts
+[monitoring]
+healthcheck = "/health"
+readinessProbe = "/health"
+livenessProbe = "/health"
+
+# Build optimization
+[build.cache]
+# Cache pip packages
+paths = [
+  "~/.cache/pip",
+  ".venv"
+]
+
+# Environment-specific overrides
+[environments.development]
+variables = [
+  "ENVIRONMENT=development",
+  "LOG_LEVEL=DEBUG",
+  "RATE_LIMIT_ENABLED=false",
+  "DATABASE_URL=postgresql://localhost:5432/nagagent_dev",
+]
+
+[environments.test]
+variables = [
+  "ENVIRONMENT=test",
+  "LOG_LEVEL=DEBUG",
+  "DATABASE_URL=postgresql://localhost:5432/nagagent_test",
+  "RATE_LIMIT_ENABLED=false",
+]
+
+# Secrets management
+[secrets]
+# These should be set in Railway dashboard
+required = [
+  "JWT_SECRET_KEY",
+  "OPENAI_API_KEY",
+  "TWILIO_ACCOUNT_SID",
+  "TWILIO_AUTH_TOKEN",
+  "DATABASE_URL"
+]

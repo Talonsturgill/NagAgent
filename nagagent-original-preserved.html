@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NagAgent iOS App - Interactive Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .app-container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            max-width: 1400px;
+        }
+        
+        .phone-mockup {
+            width: 375px;
+            height: 812px;
+            background: #000;
+            border-radius: 40px;
+            padding: 10px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            border-radius: 30px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        .screen {
+            display: none;
+            width: 100%;
+            min-height: 100%;
+            background: linear-gradient(180deg, #000 0%, rgba(128,0,128,0.3) 50%, #000 100%);
+            color: white;
+            padding: 20px;
+            animation: fadeIn 0.5s;
+        }
+        
+        .screen.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Welcome Screen */
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .app-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .app-title {
+            font-size: 48px;
+            font-weight: 900;
+            margin-bottom: 30px;
+        }
+        
+        .subtitle {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle-accent {
+            color: #a855f7;
+        }
+        
+        .description {
+            color: #999;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+        
+        .sample-roast {
+            background: rgba(128,0,128,0.2);
+            border: 1px solid rgba(128,0,128,0.5);
+            border-radius: 16px;
+            padding: 15px;
+            margin: 30px 0;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 30px;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(168,85,247,0.3);
+        }
+        
+        /* Personality Quiz Screen */
+        .personality-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .personality-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .personality-card:hover {
+            background: rgba(128,0,128,0.2);
+            border-color: #a855f7;
+            transform: scale(1.05);
+        }
+        
+        .personality-card.selected {
+            background: rgba(128,0,128,0.3);
+            border-color: #a855f7;
+            border-width: 2px;
+        }
+        
+        .personality-emoji {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        
+        .personality-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .personality-desc {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        /* Home Screen */
+        .task-list {
+            margin: 20px 0;
+        }
+        
+        .task-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s;
+        }
+        
+        .task-item.completed {
+            background: rgba(0,255,0,0.1);
+            border-color: rgba(0,255,0,0.3);
+        }
+        
+        .task-checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #666;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .task-item.completed .task-checkbox {
+            background: #00ff00;
+            border-color: #00ff00;
+        }
+        
+        .task-text {
+            flex: 1;
+        }
+        
+        .task-item.completed .task-text {
+            text-decoration: line-through;
+            color: #666;
+        }
+        
+        .excuse-btn {
+            background: rgba(255,0,0,0.2);
+            border: 1px solid rgba(255,0,0,0.5);
+            color: #ff6b6b;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .excuse-btn:hover {
+            background: rgba(255,0,0,0.3);
+        }
+        
+        .roast-bubble {
+            background: rgba(128,0,128,0.2);
+            border: 1px solid rgba(128,0,128,0.5);
+            border-radius: 16px;
+            padding: 16px;
+            margin: 20px 0;
+            animation: slideIn 0.5s;
+        }
+        
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .roast-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .roast-personality {
+            font-weight: bold;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #a855f7;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        /* Daily Report */
+        .report-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .grade-display {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .grade {
+            font-size: 80px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .grade-message {
+            color: #999;
+            margin-top: 10px;
+        }
+        
+        /* Navigation */
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 16px;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid #333;
+            border-radius: 10px;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .nav-tab.active {
+            background: rgba(128,0,128,0.3);
+            border-color: #a855f7;
+            color: white;
+        }
+        
+        .floating-buttons {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .fab {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-size: 20px;
+        }
+        
+        .fab:hover {
+            transform: scale(1.1);
+        }
+        
+        .fab-purple {
+            background: #a855f7;
+        }
+        
+        .fab-gray {
+            background: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Phone 1: Welcome & Onboarding -->
+        <div class="phone-mockup">
+            <div class="phone-screen">
+                <div class="nav-tabs">
+                    <button class="nav-tab active" onclick="showScreen('welcome', this)">Welcome</button>
+                    <button class="nav-tab" onclick="showScreen('quiz', this)">Quiz</button>
+                    <button class="nav-tab" onclick="showScreen('goals', this)">Goals</button>
+                </div>
+                
+                <!-- Welcome Screen -->
+                <div id="welcome" class="screen active">
+                    <div class="welcome-screen">
+                        <div class="app-icon">🔥</div>
+                        <h1 class="app-title">NagAgent</h1>
+                        <h2 class="subtitle">The AI That Bullies You</h2>
+                        <h2 class="subtitle subtitle-accent">Into Productivity</h2>
+                        <p class="description">Choose your accountability coach and get roasted into success</p>
+                        
+                        <div class="sample-roast">
+                            <p style="margin-bottom: 10px;">Sample Roast:</p>
+                            <p>"Ready to disappoint both of us again? 💅"</p>
+                            <p style="font-size: 12px; color: #a855f7; margin-top: 10px;">- Sassy Susan</p>
+                        </div>
+                        
+                        <button class="btn-primary" onclick="showScreen('quiz')">Choose Your Nagger →</button>
+                    </div>
+                </div>
+                
+                <!-- Personality Quiz Screen -->
+                <div id="quiz" class="screen">
+                    <h2 style="text-align: center; margin-bottom: 10px;">Choose Your</h2>
+                    <h2 style="text-align: center; color: #a855f7; margin-bottom: 20px;">Accountability Style</h2>
+                    <p style="text-align: center; color: #999; margin-bottom: 30px;">Pick the personality that will roast you into productivity</p>
+                    
+                    <div class="personality-grid">
+                        <div class="personality-card" onclick="selectPersonality(this, 'sergeant')">
+                            <div class="personality-emoji">🔥</div>
+                            <div class="personality-name">Sergeant Slacker</div>
+                            <div class="personality-desc">Military drill instructor who's disappointed in you</div>
+                        </div>
+                        
+                        <div class="personality-card selected" onclick="selectPersonality(this, 'sassy')">
+                            <div class="personality-emoji">😈</div>
+                            <div class="personality-name">Sassy Susan</div>
+                            <div class="personality-desc">Your toxic bestie who secretly wants you to succeed</div>
+                        </div>
+                        
+                        <div class="personality-card" onclick="selectPersonality(this, 'passive')">
+                            <div class="personality-emoji">🤖</div>
+                            <div class="personality-name">Passive-Aggressive Pat</div>
+                            <div class="personality-desc">Corporate middle manager energy</div>
+                        </div>
+                        
+                        <div class="personality-card" onclick="selectPersonality(this, 'brutal')">
+                            <div class="personality-emoji">👹</div>
+                            <div class="personality-name">Brutal Brandon</div>
+                            <div class="personality-desc">Zero filter, just truth bombs</div>
+                        </div>
+                    </div>
+                    
+                    <div class="sample-roast" style="margin: 30px 0;">
+                        <p style="margin-bottom: 10px;">Sample Roast:</p>
+                        <p id="personality-roast">"Morning bestie! Ready to procrastinate? The drama when you don't do it... 💅"</p>
+                        <p id="personality-name" style="font-size: 12px; color: #a855f7; margin-top: 10px;">- Sassy Susan</p>
+                    </div>
+                    
+                    <button class="btn-primary" style="width: 100%;" onclick="showScreen('goals')">Let's Get Started</button>
+                </div>
+                
+                <!-- Goal Setting Screen -->
+                <div id="goals" class="screen">
+                    <div style="background: rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 40px;">😈</span>
+                            <div>
+                                <div style="font-weight: bold;">Sassy Susan</div>
+                                <div style="color: #999; font-size: 14px;">is ready to coach you</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2 style="text-align: center; margin-bottom: 20px;">Set Your Daily Goals</h2>
+                    <p style="text-align: center; color: #999; margin-bottom: 30px;">What do you want to accomplish today? Your nagger is watching... 👀</p>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <input type="text" placeholder="Enter a goal..." style="flex: 1; padding: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: white;">
+                        <button style="background: #a855f7; border: none; padding: 12px; border-radius: 8px; color: white; cursor: pointer;">+</button>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <p style="color: #999; margin-bottom: 10px;">Examples:</p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <button class="excuse-btn" style="background: rgba(255,255,255,0.05); border-color: #666; color: #999;">Go to gym</button>
+                            <button class="excuse-btn" style="background: rgba(255,255,255,0.05); border-color: #666; color: #999;">Read 20 pages</button>
+                            <button class="excuse-btn" style="background: rgba(255,255,255,0.05); border-color: #666; color: #999;">Finish project</button>
+                            <button class="excuse-btn" style="background: rgba(255,255,255,0.05); border-color: #666; color: #999;">Meditate 10 min</button>
+                        </div>
+                    </div>
+                    
+                    <div class="task-list">
+                        <h3 style="margin-bottom: 10px;">Today's Goals:</h3>
+                        <div class="task-item">
+                            <span style="color: #00ff00;">✓</span>
+                            <span class="task-text">Go to gym</span>
+                            <button style="background: none; border: none; color: #ff6b6b; cursor: pointer;">✕</button>
+                        </div>
+                        <div class="task-item">
+                            <span style="color: #00ff00;">✓</span>
+                            <span class="task-text">Read 20 pages</span>
+                            <button style="background: none; border: none; color: #ff6b6b; cursor: pointer;">✕</button>
+                        </div>
+                        <div class="task-item">
+                            <span style="color: #00ff00;">✓</span>
+                            <span class="task-text">Finish project</span>
+                            <button style="background: none; border: none; color: #ff6b6b; cursor: pointer;">✕</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-primary" style="width: 100%; margin-top: 30px;">Start Getting Roasted</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Phone 2: Home & Tasks -->
+        <div class="phone-mockup">
+            <div class="phone-screen">
+                <div class="nav-tabs">
+                    <button class="nav-tab active" onclick="showScreen2('home', this)">Home</button>
+                    <button class="nav-tab" onclick="showScreen2('report', this)">Report</button>
+                    <button class="nav-tab" onclick="showScreen2('share', this)">Share</button>
+                </div>
+                
+                <!-- Home Screen -->
+                <div id="home" class="screen active">
+                    <!-- Personality Header -->
+                    <div style="background: rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <span style="font-size: 30px;">😈</span>
+                            <div>
+                                <div style="font-weight: bold;">Sassy Susan</div>
+                                <div style="color: #999; font-size: 12px;">Your Accountability Coach</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span style="color: #999; font-size: 12px;">Today's Progress:</span>
+                                <span style="color: #ffa500; font-size: 12px; font-weight: bold;">33%</span>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div style="background: linear-gradient(90deg, #ffa500, #ff6b6b); height: 100%; width: 33%; border-radius: 4px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Roast -->
+                    <div class="roast-bubble">
+                        <div class="roast-header">
+                            <span style="font-size: 24px;">😈</span>
+                            <div>
+                                <div class="roast-personality">Sassy Susan</div>
+                                <div style="color: #999; font-size: 12px;">says...</div>
+                            </div>
+                            <span style="margin-left: auto; cursor: pointer;">📤</span>
+                        </div>
+                        <p>Morning bestie! Ready to disappoint both of us again? 💅 I see you have 3 delusions of productivity lined up for today. Can't wait to see which one you'll blame Mercury retrograde for not doing!</p>
+                    </div>
+                    
+                    <!-- Today's Tasks -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <div>
+                                <h3>Today's Delusions</h3>
+                                <p style="color: #999; font-size: 12px;">1/3 completed</p>
+                            </div>
+                            <button style="background: none; border: none; color: #a855f7; font-size: 30px; cursor: pointer;">⊕</button>
+                        </div>
+                        
+                        <div class="task-list">
+                            <div class="task-item completed" onclick="toggleTask(this)">
+                                <div class="task-checkbox">✓</div>
+                                <span class="task-text">Go to gym</span>
+                            </div>
+                            
+                            <div class="task-item" onclick="toggleTask(this)">
+                                <div class="task-checkbox"></div>
+                                <span class="task-text">Read 20 pages</span>
+                                <button class="excuse-btn" onclick="event.stopPropagation()">Make Excuse</button>
+                            </div>
+                            
+                            <div class="task-item" onclick="toggleTask(this)">
+                                <div class="task-checkbox"></div>
+                                <span class="task-text">Finish project</span>
+                                <button class="excuse-btn" onclick="event.stopPropagation()">Make Excuse</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">1</div>
+                            <div class="stat-label">Completed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">2</div>
+                            <div class="stat-label">Remaining</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">33%</div>
+                            <div class="stat-label">Success Rate</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Daily Report Screen -->
+                <div id="report" class="screen">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <div style="font-size: 60px;">😈</div>
+                        <h2>Daily Reality Check</h2>
+                        <p style="color: #999; margin-top: 10px;">Thursday, January 9, 2025</p>
+                    </div>
+                    
+                    <!-- Performance Metrics -->
+                    <div class="report-card">
+                        <h3 style="margin-bottom: 15px;">Performance Metrics</h3>
+                        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <span>✅ Tasks Completed</span>
+                            <span style="color: #00ff00;">1/3</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <span>📊 Success Rate</span>
+                            <span style="color: #ffa500;">33%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <span>⚠️ Excuses Made</span>
+                            <span style="color: #ff6b6b;">2</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+                            <span>🔥 Current Streak</span>
+                            <span style="color: #ff6b6b;">0 days</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Personality Report -->
+                    <div class="report-card" style="background: rgba(128,0,128,0.1); border: 1px solid rgba(128,0,128,0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h3>Sassy Susan Says:</h3>
+                            <span style="cursor: pointer;">📤</span>
+                        </div>
+                        <p>Only 33%? This is giving participation trophy energy. The bar was on the floor and you brought a shovel. But hey, at least you're consistent... consistently disappointing! 💅</p>
+                    </div>
+                    
+                    <!-- Grade -->
+                    <div class="grade-display">
+                        <div class="grade">D-</div>
+                        <div class="grade-message">Giving bare minimum</div>
+                    </div>
+                </div>
+                
+                <!-- Share Screen -->
+                <div id="share" class="screen">
+                    <h2 style="text-align: center; margin-bottom: 30px;">Share Your Shame</h2>
+                    
+                    <!-- Shareable Card -->
+                    <div style="background: linear-gradient(135deg, rgba(128,0,128,0.2), rgba(255,0,128,0.2)); border: 2px solid #a855f7; border-radius: 20px; padding: 20px; margin: 20px 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 30px;">😈</span>
+                                <div>
+                                    <div style="font-weight: bold;">NagAgent Report</div>
+                                    <div style="color: #999; font-size: 12px;">Sassy Susan</div>
+                                </div>
+                            </div>
+                            <span style="font-size: 30px;">📱</span>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-around; text-align: center;">
+                            <div>
+                                <div style="font-size: 24px; font-weight: bold;">1/3</div>
+                                <div style="color: #999; font-size: 12px;">Tasks</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 24px; font-weight: bold; color: #ff6b6b;">33%</div>
+                                <div style="color: #999; font-size: 12px;">Success</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 24px; font-weight: bold; color: #ffa500;">D-</div>
+                                <div style="color: #999; font-size: 12px;">Grade</div>
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                            @NagAgent - Get roasted into productivity
+                        </div>
+                    </div>
+                    
+                    <button class="btn-primary" style="width: 100%; margin-top: 30px;">Share to Social Media</button>
+                    
+                    <div style="text-align: center; margin-top: 20px;">
+                        <p style="color: #999; margin-bottom: 10px;">Or share your favorite roast:</p>
+                        <div class="roast-bubble">
+                            <p>"Only 33%? This is giving participation trophy energy. The bar was on the floor and you brought a shovel. 💅"</p>
+                            <p style="text-align: right; color: #a855f7; font-size: 12px; margin-top: 10px;">- Sassy Susan</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showScreen(screenId, tab) {
+            // Hide all screens in first phone
+            document.querySelectorAll('.phone-mockup:first-child .screen').forEach(s => s.classList.remove('active'));
+            // Show selected screen
+            if (screenId) {
+                document.getElementById(screenId).classList.add('active');
+            }
+            // Update tab styling
+            if (tab) {
+                document.querySelectorAll('.phone-mockup:first-child .nav-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+            }
+        }
+        
+        function showScreen2(screenId, tab) {
+            // Hide all screens in second phone
+            document.querySelectorAll('.phone-mockup:nth-child(2) .screen').forEach(s => s.classList.remove('active'));
+            // Show selected screen
+            document.getElementById(screenId).classList.add('active');
+            // Update tab styling
+            if (tab) {
+                document.querySelectorAll('.phone-mockup:nth-child(2) .nav-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+            }
+        }
+        
+        function selectPersonality(card, type) {
+            // Remove selected from all cards
+            document.querySelectorAll('.personality-card').forEach(c => c.classList.remove('selected'));
+            // Add selected to clicked card
+            card.classList.add('selected');
+            
+            // Update sample roast based on personality
+            const roasts = {
+                sergeant: "RISE AND SHINE, MAGGOT! Time to disappoint me again!",
+                sassy: "Morning bestie! Ready to procrastinate? The drama when you don't do it... 💅",
+                passive: "Good morning! Another day of... potential. How refreshing.",
+                brutal: "Your potential called. It's filing a missing person report."
+            };
+            
+            const names = {
+                sergeant: "Sergeant Slacker",
+                sassy: "Sassy Susan",
+                passive: "Passive-Aggressive Pat",
+                brutal: "Brutal Brandon"
+            };
+            
+            document.getElementById('personality-roast').textContent = `"${roasts[type]}"`;
+            document.getElementById('personality-name').textContent = `- ${names[type]}`;
+        }
+        
+        function toggleTask(taskItem) {
+            taskItem.classList.toggle('completed');
+            const checkbox = taskItem.querySelector('.task-checkbox');
+            if (taskItem.classList.contains('completed')) {
+                checkbox.textContent = '✓';
+            } else {
+                checkbox.textContent = '';
+            }
+        }
+    </script>
+</body>
+</html>
