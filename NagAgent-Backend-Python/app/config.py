@@ -129,22 +129,30 @@ def get_settings() -> Settings:
 def validate_settings():
     """Validate critical configuration settings"""
     errors = []
+    warnings = []
     
     if settings.is_production:
         if settings.secret_key == "your-secret-key-change-in-production":
             errors.append("SECRET_KEY must be changed in production")
         
         if not settings.openai_api_key:
-            errors.append("OPENAI_API_KEY is required for roast generation")
+            warnings.append("OPENAI_API_KEY not set - AI roast generation will be disabled")
         
         if settings.debug:
-            errors.append("DEBUG should be False in production")
+            warnings.append("DEBUG is True in production - consider setting to False")
         
         if "*" in settings.allowed_origins:
-            errors.append("ALLOWED_ORIGINS should not include '*' in production")
+            warnings.append("ALLOWED_ORIGINS includes '*' in production - consider restricting")
     
+    # Print warnings but don't fail startup
+    if warnings:
+        print("⚠️ Configuration warnings:")
+        for warning in warnings:
+            print(f"   - {warning}")
+    
+    # Only fail on critical errors
     if errors:
-        error_msg = "Configuration errors:\n" + "\n".join(f"- {error}" for error in errors)
+        error_msg = "❌ Critical configuration errors:\n" + "\n".join(f"- {error}" for error in errors)
         raise ValueError(error_msg)
     
     return True

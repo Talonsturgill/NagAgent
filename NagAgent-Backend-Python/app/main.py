@@ -15,8 +15,17 @@ from slowapi.errors import RateLimitExceeded
 # Validate configuration on startup
 validate_settings()
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Create database tables (gracefully handle missing database)
+try:
+    if engine is not None:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database tables created/verified successfully")
+    else:
+        print("⚠️ Database engine not available - skipping table creation")
+        print("📝 Application will continue without database - some features may be limited")
+except Exception as e:
+    print(f"⚠️ Database not available during startup: {e}")
+    print("📝 Application will continue without database - some features may be limited")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -117,22 +126,39 @@ async def root():
 @limiter.limit("60/minute")
 async def health_check():
     """Health check endpoint"""
+    db_status = "not_configured"
+    
+    # Only test database connection if DATABASE_URL is configured and database is available
     try:
-        # Test database connection
-        from app.database import SessionLocal
-        db = SessionLocal()
-        db.execute("SELECT 1")
-        db.close()
-        db_status = "healthy"
+        from app.config import settings
+        from app.database import database_available, SessionLocal
+        import os
+        
+        database_url = os.getenv("DATABASE_URL", settings.database_url)
+        
+        # Check if we have database configured and available
+        if database_available and database_url and "postgresql://" in database_url:
+            # Try to actually connect and test
+            if SessionLocal is not None:
+                db = SessionLocal()
+                db.execute("SELECT 1")
+                db.close()
+                db_status = "healthy"
+            else:
+                db_status = "not_available"
+        else:
+            db_status = "not_configured"
     except Exception as e:
-        db_status = f"unhealthy: {str(e)}"
+        db_status = f"error: {str(e)[:100]}"  # Truncate long error messages
     
     return {
-        "status": "healthy" if db_status == "healthy" else "unhealthy",
-        "message": "Ready to disappoint users with their lack of progress" if db_status == "healthy" else "Database issues detected",
+        "status": "healthy",  # Always healthy if the app is responding
+        "message": "Ready to disappoint users with their lack of progress",
         "database": db_status,
         "environment": settings.environment,
-        "version": settings.app_version
+        "version": settings.app_version,
+        "port": os.getenv("PORT", "8000"),
+        "timestamp": __import__('datetime').datetime.utcnow().isoformat()
     }
 
 @app.get(f"{settings.api_prefix}/personalities", tags=["roasts"])

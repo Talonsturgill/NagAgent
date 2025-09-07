@@ -19,8 +19,11 @@ RUN useradd --create-home --shell /bin/bash app \
     && chown -R app:app /app
 USER app
 
-# Expose port
-EXPOSE 8000
+# Set environment variable for port (Railway will override this)
+ENV PORT=8000
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Expose port
+EXPOSE $PORT
+
+# Run the application with dynamic port
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
