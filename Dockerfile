@@ -19,19 +19,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy the rest of the backend application
 COPY NagAgent-Backend-Python/ ./
 
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
-USER app
-
-# Create .env file if it doesn't exist
-RUN touch .env
-
 # Set environment variable for port (Railway will override this)
 ENV PORT=8000
 
 # Expose port
 EXPOSE $PORT
 
-# Start the application with startup script
-CMD python startup.py
+# Start the application directly with uvicorn (no startup.py)
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT --log-level info
