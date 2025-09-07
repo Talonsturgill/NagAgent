@@ -28,8 +28,9 @@ def check_database_connection(max_wait: int = 30):
             
             if engine is not None and database_available:
                 # Try to connect with timeout
+                from sqlalchemy import text
                 connection = engine.connect()
-                connection.execute("SELECT 1")
+                connection.execute(text("SELECT 1"))
                 connection.close()
                 logger.info("✅ Database connection successful")
                 return True

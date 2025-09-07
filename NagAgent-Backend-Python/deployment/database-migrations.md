@@ -356,8 +356,9 @@ def upgrade():
     op.add_column('users', sa.Column('new_field', sa.String(100), nullable=True))
     
     # Then populate with default values if needed
+    from sqlalchemy import text
     connection = op.get_bind()
-    connection.execute("UPDATE users SET new_field = 'default_value' WHERE new_field IS NULL")
+    connection.execute(text("UPDATE users SET new_field = 'default_value' WHERE new_field IS NULL"))
     
     # Finally make it non-nullable if required
     op.alter_column('users', 'new_field', nullable=False)
@@ -370,8 +371,9 @@ def upgrade():
     op.add_column('users', sa.Column('new_name', sa.String(100), nullable=True))
     
     # Step 2: Copy data
+    from sqlalchemy import text
     connection = op.get_bind()
-    connection.execute("UPDATE users SET new_name = old_name")
+    connection.execute(text("UPDATE users SET new_name = old_name"))
     
     # Step 3: Make new column non-nullable
     op.alter_column('users', 'new_name', nullable=False)

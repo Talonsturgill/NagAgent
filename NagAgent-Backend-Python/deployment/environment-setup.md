@@ -342,7 +342,7 @@ if __name__ == "__main__":
 python scripts/validate_env.py
 
 # Test database connection
-python -c "from app.database import engine; print('DB connection:', engine.execute('SELECT 1'))"
+python -c "from app.database import engine; from sqlalchemy import text; print('DB connection:', engine.execute(text('SELECT 1')))"
 
 # Test OpenAI connection
 python -c "from app.services.openai_service import test_connection; test_connection()"

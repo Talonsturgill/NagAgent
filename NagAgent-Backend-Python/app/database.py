@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import create_engine, MetaData, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -38,7 +38,7 @@ def create_database_engine(database_url: str, max_retries: int = 3):
             
             # Test the connection with a simple query
             with engine.connect() as conn:
-                conn.execute("SELECT 1")
+                conn.execute(text("SELECT 1"))
                 logger.info("✅ Database connection successful!")
                 
             return engine, True

@@ -6,6 +6,7 @@ import logging
 import os
 
 from app.database import engine, Base
+from sqlalchemy import text
 from app.config import settings, validate_settings
 from app.routers import webhook, auth, goals, tasks, roasts, reports
 from app.services.scheduler_service import start_scheduler, stop_scheduler
@@ -225,7 +226,7 @@ async def detailed_health_check():
             if SessionLocal is not None:
                 start_time = datetime.utcnow()
                 db = SessionLocal()
-                db.execute("SELECT 1")
+                db.execute(text("SELECT 1"))
                 db.close()
                 end_time = datetime.utcnow()
                 
