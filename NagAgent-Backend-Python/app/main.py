@@ -20,6 +20,15 @@ logger.info(f"🌍 Environment: {settings.environment}")
 logger.info(f"🔌 Port: {os.getenv('PORT', '8000')}")
 logger.info(f"📊 Log level: {log_level}")
 
+# Import routers - adding back one at a time
+try:
+    from app.routers import auth
+    auth_available = True
+    logger.info("✅ Auth router imported successfully")
+except Exception as e:
+    auth_available = False
+    logger.warning(f"⚠️ Auth router not available: {e}")
+
 # Skip ALL database and complex startup checks for Railway healthcheck
 logger.info("⚡ Skipping database initialization for fast startup")
 
@@ -34,16 +43,24 @@ app = FastAPI(
     ]
 )
 
-# Add minimal CORS middleware for health checks
+# Add CORS middleware for all endpoints
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["*"],  # Allow all methods for API endpoints
     allow_headers=["*"],
 )
 
-logger.info("⚡ Minimal middleware added for Railway health checks")
+# Add routers if available
+if auth_available:
+    try:
+        app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
+        logger.info("✅ Auth router added to app")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not add auth router: {e}")
+
+logger.info("⚡ Middleware and routers configured")
 
 @app.get("/", tags=["health"])
 async def root():
