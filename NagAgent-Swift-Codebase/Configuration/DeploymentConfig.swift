@@ -3,8 +3,8 @@ import Foundation
 // MARK: - Deployment Configuration for App Store
 
 struct DeploymentConfig {
-    // TODO: Update this with your actual production URL after deploying backend
-    static let productionAPIURL = "https://nagagent-backend.railway.app/api/v1"
+    // Production URL from Railway deployment
+    static let productionAPIURL = "https://web-production-6503.up.railway.app/api/v1"
     
     // App Store Configuration
     static let appBundleID = "com.talonsturgill.NagAgent"
