@@ -94,6 +94,14 @@ except Exception as e:
     routers_status['reports'] = False
     logger.warning(f"⚠️ Reports router not available: {e}")
 
+try:
+    from app.routers import webhook
+    routers_status['webhook'] = True
+    logger.info("✅ Webhook router imported")
+except Exception as e:
+    routers_status['webhook'] = False
+    logger.warning(f"⚠️ Webhook router not available: {e}")
+
 # Lifespan manager for proper startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -171,7 +179,8 @@ app = FastAPI(
         {"name": "goals", "description": "Goal management"},
         {"name": "tasks", "description": "Task tracking"},
         {"name": "roasts", "description": "AI roasting engine"},
-        {"name": "reports", "description": "Progress reports"}
+        {"name": "reports", "description": "Progress reports"},
+        {"name": "webhook", "description": "External webhooks"}
     ]
 )
 
@@ -233,6 +242,13 @@ if routers_status.get('reports'):
         logger.info("✅ Reports router added")
     except Exception as e:
         logger.warning(f"⚠️ Could not add reports router: {e}")
+
+if routers_status.get('webhook'):
+    try:
+        app.include_router(webhook.router, prefix="/api/v1/webhook", tags=["webhook"])
+        logger.info("✅ Webhook router added")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not add webhook router: {e}")
 
 logger.info("⚡ Middleware and routers configured")
 
