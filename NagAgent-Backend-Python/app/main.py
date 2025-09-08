@@ -29,6 +29,15 @@ except Exception as e:
     middleware_available = False
     logging.warning(f"⚠️ Middleware not available: {e}")
 
+# Import scheduler with safe fallback
+try:
+    from app.scheduler import scheduler, start_scheduler
+    scheduler_available = True
+    logging.info("✅ Scheduler imported")
+except Exception as e:
+    scheduler_available = False
+    logging.warning(f"⚠️ Scheduler not available: {e}")
+
 # Configure logging based on environment
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -113,10 +122,35 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ Could not start database initialization: {e}")
     
+    # Start scheduler if available (non-blocking)
+    if scheduler_available:
+        try:
+            async def init_scheduler():
+                await asyncio.sleep(2)  # Let other services start first
+                try:
+                    start_scheduler()
+                    logger.info("✅ Background scheduler started")
+                except Exception as e:
+                    logger.warning(f"⚠️ Scheduler failed to start (non-critical): {e}")
+            
+            asyncio.create_task(init_scheduler())
+        except Exception as e:
+            logger.warning(f"⚠️ Could not start scheduler: {e}")
+    
     yield  # Application runs here
     
     # Shutdown
     logger.info("👋 Shutting down NagAgent application...")
+    
+    # Stop scheduler if running
+    if scheduler_available:
+        try:
+            scheduler.shutdown(wait=False)
+            logger.info("✅ Scheduler stopped")
+        except:
+            pass
+    
+    # Close database connections
     if database_available:
         try:
             engine.dispose()
