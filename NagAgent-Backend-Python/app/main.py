@@ -1,11 +1,23 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 import uvicorn
 import logging
 import os
+import asyncio
 
 # Import config first (minimal dependencies)
 from app.config import settings
+
+# Import database components with safe fallback
+try:
+    from app.database import engine, Base, get_db
+    from sqlalchemy import text
+    database_available = True
+    logging.info("✅ Database components imported")
+except Exception as e:
+    database_available = False
+    logging.warning(f"⚠️ Database not available: {e}")
 
 # Configure logging based on environment
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -63,8 +75,44 @@ except Exception as e:
     routers_status['reports'] = False
     logger.warning(f"⚠️ Reports router not available: {e}")
 
-# Skip ALL database and complex startup checks for Railway healthcheck
-logger.info("⚡ Skipping database initialization for fast startup")
+# Lifespan manager for proper startup/shutdown
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle with safe database initialization"""
+    # Startup
+    logger.info("🚀 Starting NagAgent application lifecycle...")
+    
+    # Initialize database if available (non-blocking)
+    if database_available:
+        try:
+            # Create tables in background to not block health checks
+            async def init_db():
+                await asyncio.sleep(1)  # Let health check start first
+                try:
+                    Base.metadata.create_all(bind=engine)
+                    # Test connection
+                    with engine.connect() as conn:
+                        conn.execute(text("SELECT 1"))
+                        conn.commit()
+                    logger.info("✅ Database initialized successfully")
+                except Exception as e:
+                    logger.warning(f"⚠️ Database initialization failed (non-critical): {e}")
+            
+            # Start database init in background
+            asyncio.create_task(init_db())
+        except Exception as e:
+            logger.warning(f"⚠️ Could not start database initialization: {e}")
+    
+    yield  # Application runs here
+    
+    # Shutdown
+    logger.info("👋 Shutting down NagAgent application...")
+    if database_available:
+        try:
+            engine.dispose()
+            logger.info("✅ Database connections closed")
+        except:
+            pass
 
 app = FastAPI(
     title=settings.app_name,
@@ -72,8 +120,14 @@ app = FastAPI(
     version=settings.app_version,
     docs_url=settings.docs_url,
     redoc_url=settings.redoc_url,
+    lifespan=lifespan,  # Add lifecycle management
     openapi_tags=[
-        {"name": "health", "description": "Health check endpoints"}
+        {"name": "health", "description": "Health check endpoints"},
+        {"name": "authentication", "description": "User authentication"},
+        {"name": "goals", "description": "Goal management"},
+        {"name": "tasks", "description": "Task tracking"},
+        {"name": "roasts", "description": "AI roasting engine"},
+        {"name": "reports", "description": "Progress reports"}
     ]
 )
 
