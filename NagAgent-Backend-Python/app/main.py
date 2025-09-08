@@ -19,6 +19,16 @@ except Exception as e:
     database_available = False
     logging.warning(f"⚠️ Database not available: {e}")
 
+# Import middleware components with safe fallback
+try:
+    from app.middleware.security import SecurityMiddleware
+    from app.middleware.rate_limiter import RateLimiterMiddleware
+    middleware_available = True
+    logging.info("✅ Middleware components imported")
+except Exception as e:
+    middleware_available = False
+    logging.warning(f"⚠️ Middleware not available: {e}")
+
 # Configure logging based on environment
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -139,6 +149,20 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all methods for API endpoints
     allow_headers=["*"],
 )
+
+# Add security middleware if available
+if middleware_available:
+    try:
+        app.add_middleware(SecurityMiddleware)
+        logger.info("✅ Security middleware added")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not add security middleware: {e}")
+    
+    try:
+        app.add_middleware(RateLimiterMiddleware)
+        logger.info("✅ Rate limiter middleware added")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not add rate limiter: {e}")
 
 # Add routers if available
 if routers_status.get('auth'):
