@@ -20,14 +20,48 @@ logger.info(f"🌍 Environment: {settings.environment}")
 logger.info(f"🔌 Port: {os.getenv('PORT', '8000')}")
 logger.info(f"📊 Log level: {log_level}")
 
-# Import routers - adding back one at a time
+# Import routers - adding back all at once with safe fallbacks
+routers_status = {}
+
 try:
     from app.routers import auth
-    auth_available = True
-    logger.info("✅ Auth router imported successfully")
+    routers_status['auth'] = True
+    logger.info("✅ Auth router imported")
 except Exception as e:
-    auth_available = False
+    routers_status['auth'] = False
     logger.warning(f"⚠️ Auth router not available: {e}")
+
+try:
+    from app.routers import goals
+    routers_status['goals'] = True
+    logger.info("✅ Goals router imported")
+except Exception as e:
+    routers_status['goals'] = False
+    logger.warning(f"⚠️ Goals router not available: {e}")
+
+try:
+    from app.routers import tasks
+    routers_status['tasks'] = True
+    logger.info("✅ Tasks router imported")
+except Exception as e:
+    routers_status['tasks'] = False
+    logger.warning(f"⚠️ Tasks router not available: {e}")
+
+try:
+    from app.routers import roasts
+    routers_status['roasts'] = True
+    logger.info("✅ Roasts router imported")
+except Exception as e:
+    routers_status['roasts'] = False
+    logger.warning(f"⚠️ Roasts router not available: {e}")
+
+try:
+    from app.routers import reports
+    routers_status['reports'] = True
+    logger.info("✅ Reports router imported")
+except Exception as e:
+    routers_status['reports'] = False
+    logger.warning(f"⚠️ Reports router not available: {e}")
 
 # Skip ALL database and complex startup checks for Railway healthcheck
 logger.info("⚡ Skipping database initialization for fast startup")
@@ -53,12 +87,40 @@ app.add_middleware(
 )
 
 # Add routers if available
-if auth_available:
+if routers_status.get('auth'):
     try:
         app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
-        logger.info("✅ Auth router added to app")
+        logger.info("✅ Auth router added")
     except Exception as e:
         logger.warning(f"⚠️ Could not add auth router: {e}")
+
+if routers_status.get('goals'):
+    try:
+        app.include_router(goals.router, prefix="/api/v1/goals", tags=["goals"])
+        logger.info("✅ Goals router added")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not add goals router: {e}")
+
+if routers_status.get('tasks'):
+    try:
+        app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
+        logger.info("✅ Tasks router added")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not add tasks router: {e}")
+
+if routers_status.get('roasts'):
+    try:
+        app.include_router(roasts.router, prefix="/api/v1/roasts", tags=["roasts"])
+        logger.info("✅ Roasts router added")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not add roasts router: {e}")
+
+if routers_status.get('reports'):
+    try:
+        app.include_router(reports.router, prefix="/api/v1/reports", tags=["reports"])
+        logger.info("✅ Reports router added")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not add reports router: {e}")
 
 logger.info("⚡ Middleware and routers configured")
 
