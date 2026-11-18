@@ -14,6 +14,6 @@ setup(
         "sqlalchemy==2.0.23",
         "psycopg2-binary==2.9.9",
         "openai==1.3.7",
-        "python-dotenv==1.0.0",
+        "python-dotenv==1.2.2",
     ],
 )
