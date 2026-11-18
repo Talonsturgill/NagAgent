@@ -12,7 +12,7 @@ apscheduler==3.10.4
 python-dotenv==1.2.2
 redis==5.0.1
 httpx==0.25.2
-pytest==7.4.3
+pytest==9.0.3
 pytest-asyncio==0.21.1
 
 # JWT Authentication
